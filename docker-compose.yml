@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  pubsub-redis:
+    image: redis:7.0.9-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning
+    environment:
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
+      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_AOF_ENABLED=no
+
+  consumer:
+    image: golang:1.17.2-alpine3.14
+    restart: always
+    working_dir: /go/src/app/consumers
+    command: go run main.go
+    volumes:
+      - .:/go/src/app
+    depends_on:
+      - pubsub-redis
+
+  collector:
+    image: golang:1.17.2-alpine3.14
+    restart: always
+    working_dir: /go/src/app/collectors
+    command: go run main.go
+    volumes:
+      - .:/go/src/app
+    depends_on:
+      - pubsub-redis
