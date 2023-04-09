@@ -16,6 +16,13 @@ services:
     image: golang:1.17.2-alpine3.14
     restart: always
     working_dir: /go/src/app/consumers
+    environment:
+      - REDIS_CONN_STRING=pubsub-redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - CHANNEL_ID=makima-twitter
+      - WEBHOOK_URL=
+      - LOGGER_API_TOKEN=
     command: go run main.go
     volumes:
       - .:/go/src/app
@@ -27,7 +34,27 @@ services:
     restart: always
     working_dir: /go/src/app/collectors
     command: go run main.go
+    environment:
+      - REDIS_CONN_STRING=pubsub-redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - CHANNEL_ID=makima-twitter
+      - TWITTER_CONSUMER_KEY=
+      - TWITTER_CONSUMER_SECRET=
+      - LOGGER_API_TOKEN=
     volumes:
       - .:/go/src/app
+    depends_on:
+      - pubsub-redis
+
+  ping:
+    image: golang:1.17.2-alpine3.14
+    restart: always
+    working_dir: /go/src/app/ping
+    command: go run main.go
+    volumes:
+      - .:/go/src/app
+    environment:
+      - LOGGER_API_TOKEN=
     depends_on:
       - pubsub-redis

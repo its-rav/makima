@@ -2,37 +2,40 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"time"
 
+	"github.com/its-rav/makima/pkg/config"
+	"github.com/its-rav/makima/pkg/logger"
 	"github.com/its-rav/makima/pkg/redis"
 	"github.com/its-rav/makima/pkg/twitter"
 )
 
-const (
-	CollectorID = "makima:twitter:collector"
-	ChannelID   = "makima:twitter"
-)
-
 func main() {
-	consumerKey := ""
-	consumerSecret := ""
+	logger.InitLogrusLogger()
+	var log = logger.Log
+
+	var config config.CollectorConfig
+	config.Load()
+
 	// overrideStreamRules(consumerKey, consumerSecret)
 
 	var getStreamQueryParams twitter.GetStreamQueryParams = twitter.GetStreamQueryParams{
 		TweetFields: []string{"created_at"},
 		Expansions:  []string{"author_id"},
 		UserFields:  []string{"name", "username", "profile_image_url"},
+		MediaFields: []string{"url", "preview_image_url"},
 	}
 
-	bearerToken := twitter.GetBearerToken(consumerKey, consumerSecret)
-
-	fmt.Printf("[%s] Starting collector...", CollectorID)
+	bearerToken := twitter.GetBearerToken(config.Twitter.ConsumerKey, config.Twitter.ConsumerSecret)
 
 	twitter.OnStreamReceived(bearerToken, getStreamQueryParams, func(tweet twitter.Tweet) {
+
+		log.Infof("[%s] (%s) (%s) New tweet received: %+v", config.ChannelID, tweet.CreatedAt, time.Now().Format(time.RFC1123), tweet)
+
 		redisClient := redis.NewClient(redis.RedisConfig{
-			ConnString: "pubsub-redis:6379",
-			DB:         0,
-			Password:   "",
+			ConnString: config.Redis.ConnString,
+			DB:         config.Redis.DB,
+			Password:   config.Redis.Password,
 		})
 
 		// var publishMessage types.PublishMessage = types.PublishMessage{
@@ -46,7 +49,7 @@ func main() {
 			panic(err)
 		}
 
-		redis.Publish(redisClient, ChannelID, string(message))
+		redis.Publish(redisClient, config.ChannelID, string(message))
 
 	})
 }

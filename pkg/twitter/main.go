@@ -82,78 +82,6 @@ type GetStreamQueryParams struct {
 	PlaceFields     []string `paramName:"place.fields"`
 }
 
-// {
-// 	"content": null,
-// 	"embeds": [
-// 	  {
-// 		"title": "unusual_whales",
-// 		"description": "Discohook has a bot as well, it's not strictly required to send messages it may be helpful to have it ready.\n\nBelow is a small but incomplete overview of what the bot can do for you.",
-// 		"color": 5814783,
-// 		"fields": [
-// 		  {
-// 			"name": "Source",
-// 			"value": "[:link:](https://google.com)"
-// 		  }
-// 		],
-// 		"author": {
-// 		  "name": "@unusual_whales",
-// 		  "url": "https://twitter.com/unusual_whales",
-// 		  "icon_url": "https://pbs.twimg.com/profile_images/1642939373955035136/pDS3hgcq_400x400.jpg"
-// 		},
-// 		"footer": {
-// 		  "text": "Twitter",
-// 		  "icon_url": "https://abs.twimg.com/responsive-web/client-web/icon-ios.b1fc727a.png"
-// 		},
-// 		"timestamp": "2023-04-05T12:22:00.000Z",
-// 		"thumbnail": {
-// 		  "url": "https://pbs.twimg.com/profile_images/1642939373955035136/pDS3hgcq_400x400.jpg"
-// 		}
-// 	  }
-// 	],
-// 	"attachments": []
-//   }
-
-type DiscordWebhookEmbedField struct {
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
-}
-
-type DiscordWebhookEmbedAuthor struct {
-	Name    string `json:"name,omitempty"`
-	URL     string `json:"url,omitempty"`
-	IconURL string `json:"icon_url,omitempty"`
-}
-
-type DiscordWebhookEmbedImage struct {
-	URL string `json:"url,omitempty"`
-}
-
-type DiscordWebhookEmbedFooter struct {
-	Text    string `json:"text,omitempty"`
-	IconURL string `json:"icon_url,omitempty"`
-}
-
-type DiscordWebhookEmbed struct {
-	Title       string                     `json:"title,omitempty"`
-	Description string                     `json:"description,omitempty"`
-	Color       int                        `json:"color,omitempty"`
-	Fields      []DiscordWebhookEmbedField `json:"fields,omitempty"`
-	Author      DiscordWebhookEmbedAuthor  `json:"author,omitempty"`
-	Image       DiscordWebhookEmbedImage   `json:"image,omitempty"`
-	Thumbnail   DiscordWebhookEmbedImage   `json:"thumbnail,omitempty"`
-	Timestamp   string                     `json:"timestamp,omitempty"`
-	Footer      DiscordWebhookEmbedFooter  `json:"footer,omitempty"`
-}
-
-type DiscordWebhookMessage struct {
-	Content    string                `json:"content,omitempty"`
-	Username   string                `json:"username,omitempty"`
-	AvatarURL  string                `json:"avatar_url,omitempty"`
-	Embeds     []DiscordWebhookEmbed `json:"embeds,omitempty"`
-	Flags      int                   `json:"flags,omitempty"`
-	ThreadName string                `json:"thread_name,omitempty"`
-}
-
 func convertStructToQueryParams(params interface{}) string {
 	var queryParams []string
 	value := reflect.ValueOf(params)
@@ -408,6 +336,10 @@ func OnStreamReceived(bearerToken string, params GetStreamQueryParams, callback 
 
 	// init request
 	url := fmt.Sprintf("https://api.twitter.com/2/tweets/search/stream?%s", queryParams)
+
+	fmt.Printf("url: %s", url)
+	fmt.Println()
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		// handle error
@@ -446,7 +378,8 @@ func OnStreamReceived(bearerToken string, params GetStreamQueryParams, callback 
 				}
 			}
 
-			fmt.Println(m)
+			fmt.Printf("[%s] %s ", m, time.Now().Format(time.RFC1123))
+			fmt.Println()
 
 			// print content, username, user, avatar and generate the url to the tweet
 			content := m["data"].(map[string]interface{})["text"].(string)
@@ -479,7 +412,7 @@ func OnStreamReceived(bearerToken string, params GetStreamQueryParams, callback 
 		// check if rate limit is reached
 		if remaining > 0 {
 			// display remaining requests in time window
-			fmt.Printf("Remaining requests: %d, in time window: %sd seconds", remaining, timeWindow)
+			fmt.Printf("Remaining requests: %d, in time window: %d seconds", remaining, timeWindow)
 			fmt.Println()
 
 			timeWait := time.Duration(timeWindow)*time.Second/time.Duration(remaining) + 500*time.Millisecond
@@ -584,22 +517,3 @@ func overrideStreamRules(consumerKey string, consumerSecret string) {
 	// exit program
 	return
 }
-
-// func main() {
-// 	consumerKey := "hCVutwtQ7ktNSauVlq1PFAZJc"
-// 	consumerSecret := "SdK6qfDt8yTfaNyorOJiluaZzfTYI84R5KoDVt102WDBn9dnY2"
-// 	// overrideStreamRules(consumerKey, consumerSecret)
-
-// 	var getStreamQueryParams GetStreamQueryParams = GetStreamQueryParams{
-// 		TweetFields: []string{"created_at"},
-// 		Expansions:  []string{"author_id"},
-// 		UserFields:  []string{"name", "username", "profile_image_url"},
-// 	}
-
-// 	bearerToken := GetBearerToken(consumerKey, consumerSecret)
-
-// 	fmt.Println("Loop get stream")
-// 	fmt.Println(bearerToken)
-// 	loopGetStream(bearerToken, getStreamQueryParams)
-
-// }
