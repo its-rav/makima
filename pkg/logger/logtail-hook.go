@@ -8,10 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// LogtailHook demuxes logs to io.Writers based on
-// severity. By default it uses the following outputs:
-// error and higher -> os.Stderr
-// warning and lower -> os.Stdout
 type LogtailHook struct {
 	SourceToken string
 	MinLevel    logrus.Level
@@ -19,9 +15,6 @@ type LogtailHook struct {
 	MaxRetry    int
 }
 
-// New returns a new LogtailHook by silencing the parent
-// logger and configuring separate loggers for stderr and
-// stdout with the parents loggers properties.
 func NewLogtailHook(parent *logrus.Logger, sourceToken string, minLevel logrus.Level) *LogtailHook {
 
 	return &LogtailHook{
@@ -36,7 +29,6 @@ func NewLogtailHook(parent *logrus.Logger, sourceToken string, minLevel logrus.L
 	}
 }
 
-// Fire is triggered on new log entries
 func (hook *LogtailHook) Fire(entry *logrus.Entry) error {
 
 	formatted, err := hook.Formatter.Format(entry)
@@ -50,7 +42,6 @@ func (hook *LogtailHook) Fire(entry *logrus.Entry) error {
 	return nil
 }
 
-// Levels returns all levels this hook should be registered to
 func (hook *LogtailHook) Levels() []logrus.Level {
 	return logrus.AllLevels[:hook.MinLevel+1]
 }
@@ -60,12 +51,11 @@ func (hook *LogtailHook) send(batch [][]byte) {
 
 	buf := make([]byte, 0)
 	for i, line := range batch {
-		// First character is the opening bracket of the array
 		if i == 0 {
 			buf = append(buf, '[')
 		}
 		buf = append(buf, line...)
-		// Last character is the closing bracket of the array and doesn't get a ','
+
 		if i == len(batch)-1 {
 			buf = append(buf, ']')
 			continue
@@ -86,20 +76,16 @@ func (hook *LogtailHook) send(batch [][]byte) {
 	header.Add("Content-Type", "application/json")
 
 	req.Header = header
-	fmt.Printf("req: %v", req)
 
 	i := 0
 
-	fmt.Println("Sending log to Logtail")
 	for {
 		resp, err := http.DefaultClient.Do(req)
-		fmt.Println("error 1")
 		if err != nil || (resp != nil && resp.StatusCode >= 400) {
 			fmt.Println(resp)
 			// print body
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(resp.Body)
-			fmt.Println(buf.String())
 			i++
 			if hook.MaxRetry < 0 || i >= hook.MaxRetry {
 				fmt.Println(err.Error())
@@ -108,8 +94,6 @@ func (hook *LogtailHook) send(batch [][]byte) {
 			}
 			continue
 		}
-
-		fmt.Println("error 3")
 		return
 	}
 }

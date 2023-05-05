@@ -14,74 +14,6 @@ import (
 	"time"
 )
 
-type Tweet struct {
-	Content   string `json:"content"`
-	Username  string `json:"username"`
-	Name      string `json:"name"`
-	Avatar    string `json:"avatar"`
-	TweetID   string `json:"tweetId"`
-	CreatedAt string `json:"createdAt"`
-}
-
-type StreamRule struct {
-	ID    string `json:"id"`
-	Value string `json:"value"`
-}
-
-type GetStreamRulesResponse struct {
-	Data []StreamRule `json:"data"`
-	Meta struct {
-		Sent        string `json:"sent"`
-		ResultCount int    `json:"result_count"`
-	} `json:"meta"`
-}
-
-type AddStreamRule struct {
-	Value string `json:"value"`
-	Tag   string `json:"tag,omitempty"`
-}
-
-type DeleteStreamRulesAction struct {
-	Ids []string `json:"ids"`
-}
-
-type AddStreamRulesRequest struct {
-	Add []AddStreamRule `json:"add"`
-}
-
-type DeleteStreamRulesRequest struct {
-	Delete DeleteStreamRulesAction `json:"delete"`
-}
-
-type CommandStreamRulesResponse struct {
-	ID    string `json:"id"`
-	Value string `json:"value"`
-	Tag   string `json:"tag"`
-	Meta  struct {
-		Sent    string                 `json:"sent"`
-		Summary map[string]interface{} `json:"summary"`
-	} `json:"meta"`
-}
-
-// tweet.fields: attachments, author_id, context_annotations, conversation_id, created_at, entities, geo, id, in_reply_to_user_id, lang, non_public_metrics, organic_metrics, possibly_sensitive, promoted_metrics, public_metrics, referenced_tweets, reply_settings, source, text, withheld
-// user.fields: created_at, description, entities, id, location, name, pinned_tweet_id, profile_image_url, protected, public_metrics, url, username, verified, withheld
-// media.fields: duration_ms, height, media_key, preview_image_url, type, url, width, public_metrics, non_public_metrics, organic_metrics, promoted_metrics
-// poll.fields: duration_minutes, end_datetime, id, options, voting_status
-// place.fields: contained_within, country, country_code, full_name, geo, id, name, place_type
-// expansions: author_id, entities.mentions.username, geo.place_id, in_reply_to_user_id, referenced_tweets.id, referenced_tweets.id.author_id
-
-type GetStreamQueryParams struct {
-	Expansions      []string `paramName:"expansions"`
-	TweetFields     []string `paramName:"tweet.fields"`
-	UserFields      []string `paramName:"user.fields"`
-	BackfillMinutes int      `paramName:"backfill_minutes"`
-	EndTime         string   `paramName:"end_time"`
-	StartTime       string   `paramName:"start_time"`
-	MediaFields     []string `paramName:"media.fields"`
-	PollFields      []string `paramName:"poll.fields"`
-	PlaceFields     []string `paramName:"place.fields"`
-}
-
 func convertStructToQueryParams(params interface{}) string {
 	var queryParams []string
 	value := reflect.ValueOf(params)
@@ -326,7 +258,7 @@ func deleteStreamRules(httpClient *http.Client, bearerToken string, ids []string
 	return commandStreamRulesResponse
 }
 
-func OnStreamReceived(bearerToken string, params GetStreamQueryParams, callback func(tweet Tweet)) {
+func OnStreamReceived(bearerToken string, params GetStreamQueryParams, callback func(tweet TweetResponse)) {
 	// init http client
 	httpClient := &http.Client{}
 
@@ -363,40 +295,25 @@ func OnStreamReceived(bearerToken string, params GetStreamQueryParams, callback 
 			fmt.Println("Err send request")
 			fmt.Println(err)
 		}
-		fmt.Println(resp.StatusCode)
 
 		headers := getResponseHeaders(resp, []string{"x-rate-limit-limit", "x-rate-limit-remaining", "x-rate-limit-reset"})
 
 		// read response body
 		dec := json.NewDecoder(resp.Body)
 		for {
-			var m map[string]interface{}
-			err := dec.Decode(&m)
+			var tweetResponse TweetResponse
+			err := dec.Decode(&tweetResponse)
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
 			}
 
-			fmt.Printf("[%s] %s ", m, time.Now().Format(time.RFC1123))
-			fmt.Println()
+			fmt.Println("-------------------------")
+			fmt.Println(tweetResponse)
+			fmt.Println("-------------------------")
 
-			// print content, username, user, avatar and generate the url to the tweet
-			content := m["data"].(map[string]interface{})["text"].(string)
-			username := m["includes"].(map[string]interface{})["users"].([]interface{})[0].(map[string]interface{})["username"].(string)
-			user := m["includes"].(map[string]interface{})["users"].([]interface{})[0].(map[string]interface{})["name"].(string)
-			avatar := m["includes"].(map[string]interface{})["users"].([]interface{})[0].(map[string]interface{})["profile_image_url"].(string)
-			tweetId := m["data"].(map[string]interface{})["id"].(string)
-			createdAt := m["data"].(map[string]interface{})["created_at"].(string)
-
-			callback(Tweet{
-				Content:   content,
-				Username:  username,
-				Name:      user,
-				Avatar:    avatar,
-				TweetID:   tweetId,
-				CreatedAt: createdAt,
-			})
+			callback(tweetResponse)
 		}
 
 		// print response body, status code

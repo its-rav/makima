@@ -32,8 +32,9 @@ func (cfg *ConsumerConfig) FromFile(fileName string) {
 }
 
 func (cfg *ConsumerConfig) FromEnv() {
-	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+	if err := env.Parse(cfg); err != nil {
+		fmt.Println(err)
+		panic(err)
 	}
 }
 
@@ -62,8 +63,9 @@ func (cfg *CollectorConfig) FromFile(fileName string) {
 }
 
 func (cfg *CollectorConfig) FromEnv() {
-	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+	if err := env.Parse(cfg); err != nil {
+		fmt.Println(err)
+		panic(err)
 	}
 }
 
@@ -92,8 +94,9 @@ func (cfg *BaseLoggerConfig) FromFile(fileName string) {
 }
 
 func (cfg *BaseLoggerConfig) FromEnv() {
-	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+	if err := env.Parse(cfg); err != nil {
+		fmt.Println(err)
+		panic(err)
 	}
 }
 

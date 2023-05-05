@@ -13,6 +13,6 @@ func main() {
 	var log = logger.Log
 	for {
 		log.Infof("[Ping] %s", time.Now().Format(time.RFC3339))
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * 60 * time.Second)
 	}
 }

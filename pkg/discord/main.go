@@ -40,8 +40,9 @@ import (
 //   }
 
 type DiscordWebhookEmbedField struct {
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Value  string `json:"value,omitempty"`
+	Inline bool   `json:"inline,omitempty"`
 }
 
 type DiscordWebhookEmbedAuthor struct {
