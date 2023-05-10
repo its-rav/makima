@@ -30,16 +30,27 @@ func (h *TweetHandler[TMessage]) HandleMessage(message model.PublishMessage[twit
 	tweetResponse := message.Message
 	data := tweetResponse.Data
 
-	// users string seperated by comma
+	//  check if tweetResponse.Includes not null
 	var users string
-	for _, user := range tweetResponse.Includes.Users {
-		users += fmt.Sprintf("[%s](https://twitter.com/%s), ", user.Name, user.Username)
+	if tweetResponse.Includes.Users != nil && len(tweetResponse.Includes.Users) > 1 {
+		for _, user := range tweetResponse.Includes.Users[1:] {
+			users += fmt.Sprintf("[%s](https://twitter.com/%s)\n ", user.Name, user.Username)
+		}
+	}
+
+	var medias []string
+	for _, media := range tweetResponse.Includes.Media {
+		medias = append(medias, media.URL)
 	}
 
 	// entities string seperated by comma
 	var entityUrls string
+	// only urls from 1 index
+
 	for _, entity := range data.Entities.Urls {
-		entityUrls += fmt.Sprintf("[%s](%s), ", entity.DisplayURL, entity.ExpandedURL)
+		val := fmt.Sprintf("[%s](%s)\n ", entity.DisplayURL, entity.ExpandedURL)
+		entityUrls += val
+		fmt.Println(val)
 	}
 	// remove last comma
 	if len(entityUrls) > 0 {
@@ -48,12 +59,22 @@ func (h *TweetHandler[TMessage]) HandleMessage(message model.PublishMessage[twit
 
 	// context annotations string seperated by comma
 	var contextAnnotationsDict map[string][]string
+	contextAnnotationsDict = make(map[string][]string)
 	for _, contextAnnotation := range data.ContextAnnotations {
-		contextAnnotationsDict[contextAnnotation.Domain.Name] = append(contextAnnotationsDict[contextAnnotation.Domain.Name], contextAnnotation.Entity.Name)
+		fmt.Println(contextAnnotation)
+		val := contextAnnotation.Entity.Name
+		if contextAnnotationsDict[contextAnnotation.Domain.Name] == nil {
+			contextAnnotationsDict[contextAnnotation.Domain.Name] = []string{
+				val,
+			}
+		} else {
+			contextAnnotationsDict[contextAnnotation.Domain.Name] = append(contextAnnotationsDict[contextAnnotation.Domain.Name], val)
+		}
 	}
 
 	contextAnnotationsStr := ""
-	if len(contextAnnotationsDict) > 0 {
+	// check null
+	if contextAnnotationsDict != nil && len(contextAnnotationsDict) > 0 {
 		for domain, rawItems := range contextAnnotationsDict {
 			// join items by comma replace last comma with \n
 			itemsStr := ""
@@ -62,19 +83,29 @@ func (h *TweetHandler[TMessage]) HandleMessage(message model.PublishMessage[twit
 			}
 			itemsStr = itemsStr[:len(itemsStr)-2]
 
-			contextAnnotationsStr += fmt.Sprintf("%s: %s\n", domain, itemsStr)
+			contextAnnotationsStr += fmt.Sprintf("**%s**: %s\n", domain, itemsStr)
 		}
 	}
 
 	// group entity annotations by type then format it into entityAnnotation.Type: entityAnnotation.NormalizedText (entityAnnotation.Probability) entityAnnotation2.NormalizedText (entityAnnotation2.Probability)
 	var entityAnnotationsDict map[string][]string
+	entityAnnotationsDict = make(map[string][]string)
 	for _, entityAnnotation := range data.Entities.Annotations {
+		fmt.Println(entityAnnotation)
 		percent := int(entityAnnotation.Prob * 100)
-		entityAnnotationsDict[entityAnnotation.Type] = append(entityAnnotationsDict[entityAnnotation.Type], fmt.Sprintf("%s (%d%%)", entityAnnotation.NormalizedText, percent))
+		val := fmt.Sprintf("%s (%d%%)", entityAnnotation.NormalizedText, percent)
+		if entityAnnotationsDict[entityAnnotation.Type] == nil {
+			entityAnnotationsDict[entityAnnotation.Type] = []string{
+				val,
+			}
+		} else {
+
+			entityAnnotationsDict[entityAnnotation.Type] = append(entityAnnotationsDict[entityAnnotation.Type], val)
+		}
 	}
 
 	entityAnnotationsStr := ""
-	if len(entityAnnotationsDict) > 0 {
+	if entityAnnotationsDict != nil && len(entityAnnotationsDict) > 0 {
 		for t, rawItems := range entityAnnotationsDict {
 			// join items by comma replace last comma with \n
 			itemsStr := ""
@@ -83,7 +114,7 @@ func (h *TweetHandler[TMessage]) HandleMessage(message model.PublishMessage[twit
 			}
 			itemsStr = itemsStr[:len(itemsStr)-2]
 
-			entityAnnotationsStr += fmt.Sprintf("%s: %s\n", t, itemsStr)
+			entityAnnotationsStr += fmt.Sprintf("**%s**: %s\n", t, itemsStr)
 		}
 	}
 
@@ -98,7 +129,7 @@ func (h *TweetHandler[TMessage]) HandleMessage(message model.PublishMessage[twit
 
 	if users != "" {
 		fields = append(fields, discord.DiscordWebhookEmbedField{
-			Name:   "Users",
+			Name:   "Mentions",
 			Value:  users,
 			Inline: true,
 		})
@@ -122,7 +153,7 @@ func (h *TweetHandler[TMessage]) HandleMessage(message model.PublishMessage[twit
 
 	if entityAnnotationsStr != "" {
 		fields = append(fields, discord.DiscordWebhookEmbedField{
-			Name:   "Entities - Annotations",
+			Name:   "Annotations",
 			Value:  entityAnnotationsStr,
 			Inline: true,
 		})
@@ -149,6 +180,19 @@ func (h *TweetHandler[TMessage]) HandleMessage(message model.PublishMessage[twit
 
 		Username:  AppName,
 		AvatarURL: AppLogo,
+	}
+
+	if medias != nil && len(medias) > 0 {
+
+		webhookMessage.Embeds[0].Thumbnail = discord.DiscordWebhookEmbedImage{
+			URL: medias[0],
+		}
+
+		if len(medias) > 1 {
+			webhookMessage.Embeds[0].Image = discord.DiscordWebhookEmbedImage{
+				URL: medias[1],
+			}
+		}
 	}
 
 	log.Infof("[%s] (%s) (%s) Webhook message sent: %+v", config.ChannelID, data.CreatedAt, time.Now().Format(time.RFC1123), webhookMessage)
